@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"log"
 	"math/rand"
+	"net"
 	"net/http"
 	"os"
 	"strings"
@@ -69,10 +70,6 @@ func secureCompare(a, b string) bool {
 // 增强的认证中间件
 func basicAuth(handler http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// 添加安全头
-		w.Header().Set("X-Content-Type-Options", "nosniff")
-		w.Header().Set("X-Frame-Options", "DENY")
-		w.Header().Set("X-XSS-Protection", "1; mode=block")
 
 		// 从请求头中获取 Authorization 信息
 		auth := r.Header.Get("Authorization")
@@ -83,12 +80,12 @@ func basicAuth(handler http.Handler) http.Handler {
 			w.Header().Set("WWW-Authenticate", `Basic realm="WebDAV"`)
 			http.Error(w, "Unauthorized", http.StatusUnauthorized)
 			log.Printf("Unauthorized access attempt from %s - User-Agent: %s",
-				r.RemoteAddr, r.Header.Get("User-Agent"))
+				getRealIP(r), r.Header.Get("User-Agent"))
 			return
 		}
 
 		// 如果验证成功，继续处理请求
-		log.Printf("Authenticated user: %s from %s", username, r.RemoteAddr)
+		log.Printf("Authenticated user: %s from %s", username, getRealIP(r))
 		handler.ServeHTTP(w, r)
 	})
 }
@@ -127,35 +124,24 @@ func basicAuthDecode(encoded string) (string, error) {
 	return string(decoded), nil
 }
 
-// 速率限制中间件
-func rateLimitMiddleware(handler http.Handler) http.Handler {
-	clients := make(map[string][]time.Time)
-
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		clientIP := r.RemoteAddr
-		now := time.Now()
-
-		// 清理旧记录
-		if times, exists := clients[clientIP]; exists {
-			var recent []time.Time
-			for _, t := range times {
-				if now.Sub(t) < time.Minute {
-					recent = append(recent, t)
-				}
-			}
-			clients[clientIP] = recent
-		}
-
-		// 检查请求频率 (每分钟最多60次请求)
-		if len(clients[clientIP]) >= 60 {
-			http.Error(w, "Too Many Requests", http.StatusTooManyRequests)
-			log.Printf("Rate limit exceeded for %s", clientIP)
-			return
-		}
-
-		clients[clientIP] = append(clients[clientIP], now)
-		handler.ServeHTTP(w, r)
-	})
+// 获取真实客户端 IP
+func getRealIP(r *http.Request) string {
+	xff := r.Header.Get("X-Forwarded-For")
+	if xff != "" {
+		// 可能有多个IP，取第一个
+		parts := strings.Split(xff, ",")
+		return strings.TrimSpace(parts[0])
+	}
+	xrip := r.Header.Get("X-Real-IP")
+	if xrip != "" {
+		return xrip
+	}
+	// 回退到 RemoteAddr
+	host, _, err := net.SplitHostPort(r.RemoteAddr)
+	if err == nil {
+		return host
+	}
+	return r.RemoteAddr
 }
 
 func main() {
@@ -193,7 +179,7 @@ func main() {
 	}
 
 	// 应用中间件链
-	handler := rateLimitMiddleware(basicAuth(davHandler))
+	handler := basicAuth(davHandler)
 	http.Handle("/", handler)
 
 	port := getEnvWithDefault("WEBDAV_PORT", "8080")
