@@ -204,10 +204,6 @@ func main() {
 	log.Println("🔒 文件将以加密方式存储")
 	log.Println("⚠️  请确保在生产环境中使用 HTTPS 和强密码")
 
-	log.Printf("WEBDAV_USERNAME: %s", os.Getenv("WEBDAV_USERNAME"))
-	log.Printf("WEBDAV_PASSWORD: %s", os.Getenv("WEBDAV_PASSWORD"))
-	log.Printf("WEBDAV_CRYPTO_PASSWORD: %s", os.Getenv("WEBDAV_CRYPTO_PASSWORD"))
-
 	// 启动 HTTP 服务
 	if err := http.ListenAndServe(":"+port, nil); err != nil {
 		log.Fatalf("Server failed to start: %v", err)
