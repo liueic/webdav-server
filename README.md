@@ -21,6 +21,38 @@
 
 ## 快速开始
 
+### 使用Docker（推荐）
+
+```yaml
+services:
+  webdav:
+    image: ghcr.io/liueic/webdav-server:latest
+    environment:
+      - WEBDAV_USERNAME=youruser
+      - WEBDAV_PASSWORD=yourpass
+      - WEBDAV_CRYPTO_PASSWORD=yourcryptopass
+      - WEBDAV_PORT=8080
+    volumes:
+      - ./data:/data
+    ports:
+      - "8080:8080"
+    restart: unless-stopped
+```
+注意：
+
+`WEBDAV_USERNAME` 和 `WEBDAV_PASSWORD` 必填
+
+`WEBDAV_DATA_DIR` 为文件存储目录，默认为 `data`，您可以选择将其映射到宿主机内
+
+`WEBDAV_PORT` 为监听端口，默认为 8080
+
+`WEBDAV_CRYPTO_PASSWORD` 为加密密钥，最小32位，可以使用以下方法生成：
+
+```bash
+openssl rand -hex 32
+```
+
+### 从源码构建
 ```bash
 git clone https://github.com/liueic/webdev-server
 cd webdev-server
@@ -44,20 +76,6 @@ WEBDAV_PASSWORD=your_password
 WEBDAV_DATA_DIR=./data
 WEBDAV_PORT=8080
 WEBDAV_CRYPTO_PASSWORD=your-very-strong-encryption-password-here-at-least-32-chars
-```
-
-注意：
-
-`WEBDAV_USERNAME` 和 `WEBDAV_PASSWORD` 必填
-
-`WEBDAV_DATA_DIR` 为文件存储目录，默认为 `data`
-
-`WEBDAV_PORT` 为监听端口，默认为 8080
-
-`WEBDAV_CRYPTO_PASSWORD` 为加密密钥，最小32位，可以使用以下方法生成：
-
-```bash
-openssl rand -hex 32
 ```
 
 启动服务
