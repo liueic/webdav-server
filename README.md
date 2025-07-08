@@ -52,6 +52,12 @@ services:
 openssl rand -hex 32
 ```
 
+之后使用：
+
+```bash
+docker compose up -d
+```
+
 ### 从源码构建
 ```bash
 git clone https://github.com/liueic/webdev-server
