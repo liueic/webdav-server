@@ -23,7 +23,7 @@ var (
 
 // 初始化用户凭据
 func initCredentials() {
-	username := getEnv("WEBDAV_USERNAME")
+	username = getEnv("WEBDAV_USERNAME")
 
 	// 从环境变量获取明文密码
 	password := getEnv("WEBDAV_PASSWORD")
@@ -203,6 +203,10 @@ func main() {
 	log.Printf("用户名: %s", username)
 	log.Println("🔒 文件将以加密方式存储")
 	log.Println("⚠️  请确保在生产环境中使用 HTTPS 和强密码")
+
+	log.Printf("WEBDAV_USERNAME: %s", os.Getenv("WEBDAV_USERNAME"))
+	log.Printf("WEBDAV_PASSWORD: %s", os.Getenv("WEBDAV_PASSWORD"))
+	log.Printf("WEBDAV_CRYPTO_PASSWORD: %s", os.Getenv("WEBDAV_CRYPTO_PASSWORD"))
 
 	// 启动 HTTP 服务
 	if err := http.ListenAndServe(":"+port, nil); err != nil {

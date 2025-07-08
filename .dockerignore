@@ -1,0 +1,29 @@
+# Git 相关
+.git
+.gitignore
+
+# 构建产物
+webdav-server
+*.exe
+
+# 开发文件
+.env
+.env.local
+.env.example
+README.md
+*.md
+
+# IDE 文件
+.vscode/
+.idea/
+
+# 临时文件
+*.tmp
+*.log
+
+# 数据目录
+data/
+
+# Docker 文件
+Dockerfile
+.dockerignore
