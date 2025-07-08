@@ -23,7 +23,7 @@ var (
 
 // 初始化用户凭据
 func initCredentials() {
-	username = getEnv("WEBDAV_USERNAME")
+	username := getEnv("WEBDAV_USERNAME")
 
 	// 从环境变量获取明文密码
 	password := getEnv("WEBDAV_PASSWORD")

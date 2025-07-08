@@ -11,6 +11,14 @@
 - 多项安全 HTTP 头防护
 - 日志记录访问与认证信息
 
+## 文件安全
+
+-  **AES-GCM 加密**：使用行业标准的加密算法
+-  **密钥派生**：使用 PBKDF2 从密码生成强密钥
+-  **完整性保护**：GCM 模式提供认证加密
+-  **随机 IV/Nonce**：每次加密使用随机的初始化向量
+-  **透明加密**：文件在存储时自动加密，读取时自动解密
+
 ## 快速开始
 
 ```bash
@@ -35,13 +43,22 @@ WEBDAV_USERNAME=your_username
 WEBDAV_PASSWORD=your_password
 WEBDAV_DATA_DIR=./data
 WEBDAV_PORT=8080
+WEBDAV_CRYPTO_PASSWORD=your-very-strong-encryption-password-here-at-least-32-chars
 ```
 
 注意：
 
-WEBDAV_USERNAME 和 WEBDAV_PASSWORD 必填
-WEBDAV_DATA_DIR 为文件存储目录，默认为 `data`
-WEBDAV_PORT 为监听端口，默认为 8080
+`WEBDAV_USERNAME` 和 `WEBDAV_PASSWORD` 必填
+
+`WEBDAV_DATA_DIR` 为文件存储目录，默认为 `data`
+
+`WEBDAV_PORT` 为监听端口，默认为 8080
+
+`WEBDAV_CRYPTO_PASSWORD` 为加密密钥，最小32位，可以使用以下方法生成：
+
+```bash
+openssl rand -hex 32
+```
 
 启动服务
 
