@@ -22,10 +22,35 @@ type CryptoFileSystem struct {
 	gcm     cipher.AEAD
 }
 
-// NewCryptoFileSystem 创建加密文件系统
+// NewCryptoFileSystem 创建加密文件系统（动态安全盐值）
 func NewCryptoFileSystem(baseDir, password string) (*CryptoFileSystem, error) {
+	saltPath := filepath.Join(baseDir, ".crypto_salt")
+	var salt []byte
+
+	// 检查盐值文件是否存在
+	if _, err := os.Stat(saltPath); os.IsNotExist(err) {
+		// 生成新的随机盐值
+		salt = make([]byte, 32)
+		if _, err := rand.Read(salt); err != nil {
+			return nil, fmt.Errorf("failed to generate salt: %v", err)
+		}
+		// 保存盐值到文件
+		if err := os.WriteFile(saltPath, salt, 0600); err != nil {
+			return nil, fmt.Errorf("failed to save salt: %v", err)
+		}
+	} else {
+		// 读取已有盐值
+		var err error
+		salt, err = os.ReadFile(saltPath)
+		if err != nil {
+			return nil, fmt.Errorf("failed to read salt: %v", err)
+		}
+		if len(salt) != 32 {
+			return nil, fmt.Errorf("invalid salt length")
+		}
+	}
+
 	// 使用 PBKDF2 从密码生成密钥
-	salt := []byte("webdav-crypto-salt-2024") // 在生产环境中应该使用随机盐
 	key := pbkdf2.Key([]byte(password), salt, 100000, 32, sha256.New)
 
 	// 创建 AES-GCM 密码器
@@ -281,8 +306,13 @@ func (cf *CryptoFile) Readdir(count int) ([]os.FileInfo, error) {
 	}
 
 	var infos []os.FileInfo
-	for i, entry := range entries {
-		if count > 0 && i >= count {
+	for _, entry := range entries {
+		name := entry.Name()
+		// 跳过盐值文件
+		if name == ".crypto_salt" {
+			continue
+		}
+		if count > 0 && len(infos) >= count {
 			break
 		}
 
@@ -291,13 +321,13 @@ func (cf *CryptoFile) Readdir(count int) ([]os.FileInfo, error) {
 			continue
 		}
 
-		name := info.Name()
+		displayName := name
 		if filepath.Ext(name) == ".enc" {
-			name = name[:len(name)-4] // 去掉 .enc 后缀
+			displayName = name[:len(name)-4] // 去掉 .enc 后缀
 		}
 
 		infos = append(infos, &CryptoFileInfo{
-			name:    name,
+			name:    displayName,
 			size:    info.Size(),
 			mode:    info.Mode(),
 			modTime: info.ModTime(),
