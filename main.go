@@ -38,12 +38,21 @@ func initCredentials() {
 	log.Printf("认证凭据已初始化，用户名: %s", username)
 }
 
-// 获取环境变量，如果未设置则抛出 panic
+// 获取环境变量，支持可选的默认值
 func getEnv(key string) string {
 	if value := os.Getenv(key); value != "" {
 		return value
 	}
-	panic("Environment variable " + key + " is not set")
+	log.Fatalf("Environment variable %s is not set", key)
+	return ""
+}
+
+// 获取环境变量，带默认值
+func getEnvWithDefault(key, defaultValue string) string {
+	if value := os.Getenv(key); value != "" {
+		return value
+	}
+	return defaultValue
 }
 
 // 验证密码
@@ -150,31 +159,36 @@ func rateLimitMiddleware(handler http.Handler) http.Handler {
 }
 
 func main() {
+	// 加载环境变量
 	err := godotenv.Load()
 	if err != nil {
-		log.Println("No .env file found, using default environment variables")
+		log.Println("No .env file found, using system environment variables")
 	}
 	log.Println("Loading environment variables...")
+
 	// 初始化认证凭据
 	initCredentials()
 
 	// 创建存储文件的目录
-	dataDir := getEnv("WEBDAV_DATA_DIR")
-	if dataDir == "" {
-		dataDir = "./data" // 默认数据目录
-	}
+	dataDir := getEnvWithDefault("WEBDAV_DATA_DIR", "./data")
 	log.Printf("Using data directory: %s", dataDir)
 	if err := os.MkdirAll(dataDir, 0755); err != nil {
 		log.Fatalf("Failed to create data directory: %v", err)
 	}
 
-	// 文件存储路径
-	root := http.Dir(dataDir)
+	// 获取加密密码
+	cryptoPassword := getEnv("WEBDAV_CRYPTO_PASSWORD")
 
-	// 创建 WebDAV 处理器
+	// 创建加密文件系统
+	cryptoFS, err := NewCryptoFileSystem(dataDir, cryptoPassword)
+	if err != nil {
+		log.Fatalf("Failed to create crypto filesystem: %v", err)
+	}
+
+	// 创建 WebDAV 处理器，使用加密文件系统
 	davHandler := &webdav.Handler{
 		Prefix:     "/",
-		FileSystem: webdav.Dir(root),
+		FileSystem: cryptoFS,
 		LockSystem: webdav.NewMemLS(),
 	}
 
@@ -182,11 +196,12 @@ func main() {
 	handler := rateLimitMiddleware(basicAuth(davHandler))
 	http.Handle("/", handler)
 
-	port := getEnv("WEBDAV_PORT")
+	port := getEnvWithDefault("WEBDAV_PORT", "8080")
 
 	log.Printf("WebDAV服务启动在端口 %s", port)
-	log.Printf("数据目录: %s", dataDir)
+	log.Printf("数据目录: %s (加密存储)", dataDir)
 	log.Printf("用户名: %s", username)
+	log.Println("🔒 文件将以加密方式存储")
 	log.Println("⚠️  请确保在生产环境中使用 HTTPS 和强密码")
 
 	// 启动 HTTP 服务
